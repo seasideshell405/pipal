@@ -3,7 +3,7 @@
  *
  * 注册 add_memory / list_memories / delete_memory 三个工具，
  * 让 Pi 在对话中自主管理永久记忆。
- * 读写 data/memory/permanent.json，与 PiPal 的 PermanentMemory 共享数据。
+ * 读写 data/memories/permanent.json，与 PiPal 的 PermanentMemory 共享数据。
  */
 import { Type } from "@earendil-works/pi-ai";
 import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
@@ -12,7 +12,7 @@ import * as path from "node:path";
 
 const MEMORY_PATH = path.resolve(
   process.env.DATA_DIR ?? "./data",
-  "memory",
+  "memories",
   "permanent.json",
 );
 
