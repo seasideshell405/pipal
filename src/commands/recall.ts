@@ -15,7 +15,7 @@ export function createRecallCommand(sessionManager: SessionManager): CommandHand
         return '没有可删除的对话。至少要保留一轮对话。';
       }
 
-      return '已撤回最近一轮对话。';
+      return '已撤回最近一轮对话。\n\n⚠️ 注意：撤回之后至少进行一次对话然后重启，否则撤回不生效。';
     },
   };
 }
