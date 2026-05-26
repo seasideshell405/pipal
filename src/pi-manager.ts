@@ -299,6 +299,14 @@ export class SessionManager {
     return this._activeSudoSessionId !== null;
   }
 
+  /** 获取当前 sudo 会话的标签，无标签返回 null */
+  getCurrentSudoSessionName(): string | null {
+    if (!this._activeSudoSessionId) return null;
+    const all = this.loadSudoSessionsIndex();
+    const session = all.find(s => s.id === this._activeSudoSessionId);
+    return session?.name ?? null;
+  }
+
   /** 列出所有 sudo 会话（按更新时间降序） */
   async listSudoSessions(): Promise<SudoSessionMeta[]> {
     const sessions = this.loadSudoSessionsIndex();
@@ -347,7 +355,7 @@ export class SessionManager {
     }
 
     // 记入索引
-    const now = new Date().toISOString();
+    const now = formatTs(new Date());
     const sessions = this.loadSudoSessionsIndex();
     sessions.push({ id, name: label ?? null, createdAt: now, updatedAt: now });
     this.saveSudoSessionsIndex(sessions);
@@ -400,7 +408,7 @@ export class SessionManager {
     this._activeSudoSessionId = id;
 
     // 更新最后使用时间
-    const now = new Date().toISOString();
+    const now = formatTs(new Date());
     const all = this.loadSudoSessionsIndex();
     const idx = all.findIndex(s => s.id === id);
     if (idx >= 0) {
@@ -413,7 +421,7 @@ export class SessionManager {
   }
 
   /** 退出 sudo 模式：关闭 sudo session，恢复普通会话 */
-  async exitSudo(): Promise<string | null> {
+  async exitSudo(label?: string): Promise<string | null> {
     if (!this._savedNormalSession || !this._currentSession || !this._activeSudoSessionId) {
       return '当前不在 sudo 模式。';
     }
@@ -423,16 +431,20 @@ export class SessionManager {
 
     await sudoSession.stop();
 
-    // 更新索引：如果 Pi 自动生成了名字且用户没给标签，补上
-    const piName = sudoSession.getSessionName();
-    if (piName) {
-      const all = this.loadSudoSessionsIndex();
-      const idx = all.findIndex(s => s.id === id);
-      if (idx >= 0) {
-        all[idx].name = all[idx].name ?? piName;
-        all[idx].updatedAt = new Date().toISOString();
-        this.saveSudoSessionsIndex(all);
+    // 更新索引：优先使用用户显式提供的标签，再尝试 Pi SDK 自动生成的名字
+    const all = this.loadSudoSessionsIndex();
+    const idx = all.findIndex(s => s.id === id);
+    if (idx >= 0) {
+      if (label) {
+        all[idx].name = label;
+      } else {
+        const piName = sudoSession.getSessionName();
+        if (piName) {
+          all[idx].name = all[idx].name ?? piName;
+        }
       }
+      all[idx].updatedAt = formatTs(new Date());
+      this.saveSudoSessionsIndex(all);
     }
 
     sudoSession.dispose();

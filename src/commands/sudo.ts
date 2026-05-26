@@ -23,7 +23,7 @@ export function createSudoCommand(sessionManager: SessionManager): CommandHandle
 
         const rows = sessions.map((s, i) => {
           const name = s.name ?? '(未命名)';
-          const updated = s.updatedAt.slice(0, 16).replace('T', ' ');
+          const updated = s.updatedAt;
           return `| ${i + 1} | ${name} | ${updated} |`;
         });
 
@@ -68,9 +68,31 @@ export function createExitCommand(sessionManager: SessionManager): CommandHandle
   return {
     name: 'exit',
     description: '退出 sudo 开发模式，回到普通模式',
-    async handle(_ctx: CommandContext): Promise<string> {
+    usage: '/exit 或 /exit <标签>',
+    async handle(ctx: CommandContext): Promise<string> {
       if (!sessionManager.isSudoMode) {
         return '当前不在 sudo 模式。';
+      }
+
+      // 解析 /exit <标签> 中的标签
+      const content = ctx.message.content.trim();
+      const parts = content.split(/\s+/);
+      const hasLabel = parts.length >= 2;
+
+      if (hasLabel) {
+        const label = parts.slice(1).join(' ');
+        await sessionManager.exitSudo(label);
+        return `已退出 sudo 模式（${label}），已恢复普通模式。`;
+      }
+
+      // 无标签时检查会话是否有已有标签
+      const sessionName = sessionManager.getCurrentSudoSessionName();
+      if (!sessionName) {
+        return (
+          '当前 sudo 会话没有标签，退出时需要添加标签以便日后识别。\n\n' +
+          '请使用 `/exit <标签>` 退出。\n\n' +
+          '例如：`/exit 修复登录bug`、`/exit 实现用户数据导出`'
+        );
       }
 
       await sessionManager.exitSudo();
