@@ -424,7 +424,7 @@ export class SessionManager {
     return null;
   }
 
-  /** 退出 sudo 模式：关闭 sudo session，恢复普通会话 */
+  /** 退出 sudo 模式：关闭 sudo session，从文件重新加载普通 session（加载新扩展） */
   async exitSudo(label?: string): Promise<string | null> {
     if (!this._savedNormalSession || !this._currentSession || !this._activeSudoSessionId) {
       return '当前不在 sudo 模式。';
@@ -453,14 +453,36 @@ export class SessionManager {
 
     sudoSession.dispose();
 
-    // 恢复正常会话
-    this._currentSession = this._savedNormalSession;
-    this._currentDate = this._savedNormalDate;
+    // 释放旧的普通 session（不再 restore，改为重新加载）
+    this._savedNormalSession.dispose();
+
+    // 从 session JSONL 文件重新加载普通 session，此时会加载最新扩展
+    const savedDate = this._savedNormalDate;
+    try {
+      const memoryCtx = await loadMemoryContext({ dataDir: this.config.dataDir });
+      const prompts = await this.loadOrGeneratePrompts(memoryCtx);
+      this._currentSystemPrompt = prompts.normal;
+
+      const sessionPath = join(this.config.dataDir, 'sessions', `${savedDate}.jsonl`);
+      this._currentSession = await this.config.piFactory.create({
+        llm: this.config.llm,
+        systemPrompt: prompts.normal,
+        workspaceDir: this.config.workspaceDir,
+        agentDir: join(this.config.workspaceDir ?? process.cwd(), '.pi'),
+        sessionPath,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.log.error('[sudo] 重新加载普通 session 失败:' + msg);
+      this._currentSession = null; // 置空后 ensureSession 会兜底创建新 session
+    }
+
+    this._currentDate = savedDate;
     this._savedNormalSession = null;
     this._savedNormalDate = '';
     this._activeSudoSessionId = null;
 
-    this.log.info('[sudo] 已退出 sudo 模式，正常会话已恢复');
+    this.log.info('[sudo] 已退出 sudo 模式，已重新加载普通 session');
     return null;
   }
 
