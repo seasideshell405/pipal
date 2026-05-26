@@ -206,7 +206,7 @@ const listTodos = defineTool({
         lines.push("─".repeat(52));
         lines.push(q.label);
         for (const t of items) {
-          let itemLine = `  □ [${t.id.slice(0, 8)}] ${t.content}`;
+          let itemLine = `  □ [${t.id.slice(0, 12)}] ${t.content}`;
           if (t.dueDate) {
             itemLine += `    截止: ${t.dueDate}`;
             if (t.urgency === "not_urgent" && t.thresholdDays !== undefined) {
@@ -222,7 +222,7 @@ const listTodos = defineTool({
       // 已完成任务
       lines.push("");
       for (const t of enriched) {
-        lines.push(`  ☑️ [${t.id.slice(0, 8)}] ${t.content}`);
+        lines.push(`  ☑️ [${t.id.slice(0, 12)}] ${t.content}`);
       }
       lines.push("");
       lines.push(`共 ${enriched.length} 项已完成 🎉`);
@@ -255,7 +255,9 @@ const completeTodo = defineTool({
       return { content: [{ type: "text", text: "❌ 未找到该任务" }] };
     }
     if (idx === -2) {
-      return { content: [{ type: "text", text: "⚠️ 有多个任务的前几位 id 相同，请提供更完整的 id" }] };
+      const matches = tasks.filter((t) => t.id.startsWith(params.id));
+      const list = matches.map((t) => `  [${t.id}] ${t.content}`).join("\n");
+      return { content: [{ type: "text", text: `⚠️ 有多个任务匹配，请用完整 id：\n${list}` }] };
     }
     tasks[idx].status = "done";
     await saveTasks(tasks);
@@ -300,7 +302,9 @@ const updateTodo = defineTool({
       return { content: [{ type: "text", text: "❌ 未找到该任务" }] };
     }
     if (idx === -2) {
-      return { content: [{ type: "text", text: "⚠️ 有多个任务的前几位 id 相同，请提供更完整的 id" }] };
+      const matches = tasks.filter((t) => t.id.startsWith(params.id));
+      const list = matches.map((t) => `  [${t.id}] ${t.content}`).join("\n");
+      return { content: [{ type: "text", text: `⚠️ 有多个任务匹配，请用完整 id：\n${list}` }] };
     }
 
     const task = tasks[idx];
@@ -342,7 +346,9 @@ const deleteTodo = defineTool({
       return { content: [{ type: "text", text: "❌ 未找到该任务" }] };
     }
     if (idx === -2) {
-      return { content: [{ type: "text", text: "⚠️ 有多个任务的前几位 id 相同，请提供更完整的 id" }] };
+      const matches = tasks.filter((t) => t.id.startsWith(params.id));
+      const list = matches.map((t) => `  [${t.id}] ${t.content}`).join("\n");
+      return { content: [{ type: "text", text: `⚠️ 有多个任务匹配，请用完整 id：\n${list}` }] };
     }
     const removed = tasks.splice(idx, 1)[0];
     await saveTasks(tasks);
