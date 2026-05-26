@@ -49,14 +49,19 @@ async function loadTasks(): Promise<TodoItem[]> {
   }
 }
 
-/** 根据 id（完整 UUID 或前缀）查找任务索引，优先精确匹配 */
+/**
+ * 根据 id（完整 UUID 或前缀）查找任务索引。
+ * 返回：非负数=匹配到的索引 | -1=无匹配 | -2=多个前缀匹配
+ */
 function findTaskIndex(tasks: TodoItem[], id: string): number {
   // 先精确匹配
   const exact = tasks.findIndex((t) => t.id === id);
   if (exact !== -1) return exact;
   // 再前缀匹配
-  const prefix = tasks.findIndex((t) => t.id.startsWith(id));
-  return prefix;
+  const matched = tasks.filter((t) => t.id.startsWith(id));
+  if (matched.length === 0) return -1;
+  if (matched.length > 1) return -2; // 多个匹配，需要更完整的 id
+  return tasks.findIndex((t) => t.id.startsWith(id));
 }
 
 async function saveTasks(tasks: TodoItem[]): Promise<void> {
@@ -249,6 +254,9 @@ const completeTodo = defineTool({
     if (idx === -1) {
       return { content: [{ type: "text", text: "❌ 未找到该任务" }] };
     }
+    if (idx === -2) {
+      return { content: [{ type: "text", text: "⚠️ 有多个任务的前几位 id 相同，请提供更完整的 id" }] };
+    }
     tasks[idx].status = "done";
     await saveTasks(tasks);
     return {
@@ -291,6 +299,9 @@ const updateTodo = defineTool({
     if (idx === -1) {
       return { content: [{ type: "text", text: "❌ 未找到该任务" }] };
     }
+    if (idx === -2) {
+      return { content: [{ type: "text", text: "⚠️ 有多个任务的前几位 id 相同，请提供更完整的 id" }] };
+    }
 
     const task = tasks[idx];
     if (params.content !== undefined) task.content = params.content;
@@ -329,6 +340,9 @@ const deleteTodo = defineTool({
     const idx = findTaskIndex(tasks, params.id);
     if (idx === -1) {
       return { content: [{ type: "text", text: "❌ 未找到该任务" }] };
+    }
+    if (idx === -2) {
+      return { content: [{ type: "text", text: "⚠️ 有多个任务的前几位 id 相同，请提供更完整的 id" }] };
     }
     const removed = tasks.splice(idx, 1)[0];
     await saveTasks(tasks);
