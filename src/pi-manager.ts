@@ -178,24 +178,28 @@ export class SessionManager {
   async processMessage(userId: string, text: string): Promise<string | null> {
     const session = await this.ensureSession();
 
-    // 存档用户消息
-    await this.archive.append({
-      role: 'user',
-      content: text,
-      timestamp: formatTs(new Date()),
-    });
+    // 存档用户消息（sudo 模式不记录）
+    if (!this.isSudoMode) {
+      await this.archive.append({
+        role: 'user',
+        content: text,
+        timestamp: formatTs(new Date()),
+      });
+    }
 
     // 发送给 LLM
     try {
       const reply = await session.prompt(text);
-      // 存档回复
+      // 存档回复（sudo 模式不记录）
       let finalReply = reply;
       if (reply) {
-        await this.archive.append({
-          role: 'assistant',
-          content: reply,
-          timestamp: formatTs(new Date()),
-        });
+        if (!this.isSudoMode) {
+          await this.archive.append({
+            role: 'assistant',
+            content: reply,
+            timestamp: formatTs(new Date()),
+          });
+        }
         // sudo 模式下追加模式提示
         if (this.isSudoMode) {
           finalReply = reply + '\n\n---\n*当前处于开发者模式，发送 `/exit` 退出*';
@@ -463,11 +467,24 @@ export class SessionManager {
   /** 加载 sudo 提示词 */
   private loadSudoPrompt(): string {
     const file = join(this.config.dataDir, 'prompt', 'sudo.md');
+    let base: string;
     try {
-      return readFileSync(file, 'utf-8');
+      base = readFileSync(file, 'utf-8');
     } catch {
-      return '你是 PiPal，基于 Pi SDK 二次开发的 AI 助理，当前处于开发者模式。';
+      base = [
+        '你是 PiPal，基于 Pi SDK 二次开发的 AI 助理，当前处于**开发者模式**。',
+        '',
+        '你的专属工作区是项目的 `workspace/` 目录（即当前目录），所有操作限在该目录内。',
+        '',
+        '## 用户自定义说明',
+        '`Instructions.md`（工作区根目录）是用户写给你的操作指南和使用说明，告诉你需要遵守什么规则以及怎么执行任务。',
+        '',
+        '- 如果用户提出新的要求或注意事项，你负责更新这个文件',
+        '- 如果你觉得有什么值得记入的，主动询问用户',
+      ].join('\n');
     }
+
+    return base;
   }
 
   // ── sudo 会话索引管理 ──
