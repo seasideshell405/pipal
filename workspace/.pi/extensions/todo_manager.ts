@@ -49,6 +49,16 @@ async function loadTasks(): Promise<TodoItem[]> {
   }
 }
 
+/** 根据 id（完整 UUID 或前缀）查找任务索引，优先精确匹配 */
+function findTaskIndex(tasks: TodoItem[], id: string): number {
+  // 先精确匹配
+  const exact = tasks.findIndex((t) => t.id === id);
+  if (exact !== -1) return exact;
+  // 再前缀匹配
+  const prefix = tasks.findIndex((t) => t.id.startsWith(id));
+  return prefix;
+}
+
 async function saveTasks(tasks: TodoItem[]): Promise<void> {
   await fs.mkdir(TODOS_DIR, { recursive: true });
   const tmp = TASKS_PATH + ".tmp";
@@ -170,10 +180,53 @@ const listTodos = defineTool({
     // 待办按创建时间倒序，已完成按完成时间倒序
     enriched.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
+    // 构建展示文本：按象限分组
+    const lines: string[] = [];
+    lines.push(`${params.status === "pending" ? "待办" : "已完成"}任务共 ${enriched.length} 个`);
+
+    if (params.status === "pending") {
+      const quadrants: Array<{ label: string; importance: Importance; urgency: Urgency }> = [
+        { label: "🔴 重要·紧急", importance: "important", urgency: "urgent" },
+        { label: "🟡 重要·不紧急", importance: "important", urgency: "not_urgent" },
+        { label: "🟢 不重要·紧急", importance: "unimportant", urgency: "urgent" },
+        { label: "⚪ 不重要·不紧急", importance: "unimportant", urgency: "not_urgent" },
+      ];
+
+      for (const q of quadrants) {
+        const items = enriched.filter(
+          (t) => t.importance === q.importance && t.currentUrgency === q.urgency
+        );
+        if (items.length === 0) continue;
+        lines.push("");
+        lines.push("─".repeat(52));
+        lines.push(q.label);
+        for (const t of items) {
+          let itemLine = `  □ [${t.id.slice(0, 8)}] ${t.content}`;
+          if (t.dueDate) {
+            itemLine += `    截止: ${t.dueDate}`;
+            if (t.urgency === "not_urgent" && t.thresholdDays !== undefined) {
+              itemLine += `  → ${t.thresholdDays}天前提醒`;
+            }
+          }
+          lines.push(itemLine);
+        }
+      }
+      lines.push("");
+      lines.push(`共 ${enriched.length} 项待办`);
+    } else {
+      // 已完成任务
+      lines.push("");
+      for (const t of enriched) {
+        lines.push(`  ☑️ [${t.id.slice(0, 8)}] ${t.content}`);
+      }
+      lines.push("");
+      lines.push(`共 ${enriched.length} 项已完成 🎉`);
+    }
+
     return {
       content: [{
         type: "text",
-        text: `${params.status === "pending" ? "待办" : "已完成"}任务共 ${enriched.length} 个`,
+        text: lines.join("\n"),
       }],
       details: { tasks: enriched },
     };
@@ -192,7 +245,7 @@ const completeTodo = defineTool({
 
   async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
     const tasks = await loadTasks();
-    const idx = tasks.findIndex((t) => t.id === params.id);
+    const idx = findTaskIndex(tasks, params.id);
     if (idx === -1) {
       return { content: [{ type: "text", text: "❌ 未找到该任务" }] };
     }
@@ -234,7 +287,7 @@ const updateTodo = defineTool({
 
   async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
     const tasks = await loadTasks();
-    const idx = tasks.findIndex((t) => t.id === params.id);
+    const idx = findTaskIndex(tasks, params.id);
     if (idx === -1) {
       return { content: [{ type: "text", text: "❌ 未找到该任务" }] };
     }
@@ -273,7 +326,7 @@ const deleteTodo = defineTool({
 
   async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
     const tasks = await loadTasks();
-    const idx = tasks.findIndex((t) => t.id === params.id);
+    const idx = findTaskIndex(tasks, params.id);
     if (idx === -1) {
       return { content: [{ type: "text", text: "❌ 未找到该任务" }] };
     }

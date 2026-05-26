@@ -466,12 +466,12 @@ export class SessionManager {
 
   /** 加载 sudo 提示词 */
   private loadSudoPrompt(): string {
-    const file = join(this.config.dataDir, 'prompt', 'sudo.md');
-    let base: string;
+    const promptDir = getPromptsDir();
+    const file = join(promptDir, 'sudo.md');
     try {
-      base = readFileSync(file, 'utf-8');
+      return readFileSync(file, 'utf-8');
     } catch {
-      base = [
+      return [
         '你是 PiPal，基于 Pi SDK 二次开发的 AI 助理，当前处于**开发者模式**。',
         '',
         '你的专属工作区是项目的 `workspace/` 目录（即当前目录），所有操作限在该目录内。',
@@ -483,8 +483,6 @@ export class SessionManager {
         '- 如果你觉得有什么值得记入的，主动询问用户',
       ].join('\n');
     }
-
-    return base;
   }
 
   // ── sudo 会话索引管理 ──

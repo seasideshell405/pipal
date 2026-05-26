@@ -130,6 +130,19 @@ export class PiSessionFactory implements IPiSessionFactory {
       const all = (session.getAllTools() ?? []).map((t: any) => t.name);
       const active = all.filter((n: string) => !builtin.has(n));
       session.setActiveToolsByName(active);
+
+      // Pi SDK 在 system prompt 中注入 skill 信息的前提是 read 工具可用。
+      // 普通模式下 read 被禁用，导致 AI 完全不知道 skill 存在。
+      // 这里手动注入，并告知用 read_skill 替代 read 来加载 skill 完整内容。
+      const skillsResult = resourceLoader.getSkills();
+      if (skillsResult.skills.length > 0) {
+        const formatted = pi.formatSkillsForPrompt(skillsResult.skills);
+        if (formatted) {
+          const modified = formatted.replace('read tool', 'read_skill tool');
+          // systemPrompt 是 getter-only，直接操作 agent state
+          session.agent.state.systemPrompt += '\n\n' + modified;
+        }
+      }
     }
 
     return new PiSession(session);

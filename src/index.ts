@@ -13,7 +13,6 @@ import { createMemoriesCommand } from './commands/memory.js';
 import { createPromptCommand } from './commands/prompt.js';
 import { createStopCommand } from './commands/stop.js';
 import { createSudoCommand, createExitCommand } from './commands/sudo.js';
-import { createRestartCommand } from './commands/restart.js';
 import { createRollbackCommand } from './commands/rollback.js';
 import { createRecallCommand } from './commands/recall.js';
 import { PermanentMemory } from './memory/permanent.js';
@@ -90,7 +89,6 @@ async function main(): Promise<void> {
   router.register(createStopCommand(sessionManager));
   router.register(createSudoCommand(sessionManager));
   router.register(createExitCommand(sessionManager));
-  router.register(createRestartCommand());
   router.register(createRollbackCommand(sessionManager));
   router.register(createRecallCommand(sessionManager));
 
