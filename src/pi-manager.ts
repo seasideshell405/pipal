@@ -214,6 +214,49 @@ export class SessionManager {
     }
   }
 
+  /**
+   * 重新加载扩展、技能和提示词（相当于 Pi SDK 的 /reload-runtime）。
+   * 停用当前 session，用同样的 session 文件重建，新扩展自动生效。
+   * 仅普通模式可用，sudo 模式下返回错误描述。
+   */
+  async reload(): Promise<string | null> {
+    if (this._activeSudoSessionId) {
+      return 'sudo 模式下不支持 /reload，请先 /exit 退出。';
+    }
+
+    const oldSession = this._currentSession;
+    if (!oldSession) return null;
+
+    if (oldSession.isProcessing) {
+      await oldSession.stop();
+    }
+
+    this._currentSession = null;
+
+    try {
+      oldSession.dispose();
+
+      const memoryCtx = await loadMemoryContext({ dataDir: this.config.dataDir });
+      const prompts = await this.loadOrGeneratePrompts(memoryCtx);
+      this._currentSystemPrompt = prompts.normal;
+
+      const sessionPath = join(this.config.dataDir, 'sessions', `${this._currentDate}.jsonl`);
+      this._currentSession = await this.config.piFactory.create({
+        llm: this.config.llm,
+        systemPrompt: prompts.normal,
+        workspaceDir: this.config.workspaceDir,
+        agentDir: join(this.config.workspaceDir ?? process.cwd(), '.pi'),
+        sessionPath,
+      });
+
+      return null;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.log.error('[reload] 重新创建 session 失败: ' + msg);
+      return '重新加载失败: ' + msg;
+    }
+  }
+
   /** 打断当前 Pi 的执行 */
   async stop(): Promise<void> {
     await this._currentSession?.stop();

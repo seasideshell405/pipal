@@ -9,8 +9,6 @@ import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { join, normalize, relative } from "node:path";
 import { readFileSync, existsSync } from "node:fs";
 
-const SKILLS_DIR = join(process.cwd(), ".pi", "skills");
-
 const readSkill = defineTool({
   name: "read_skill",
   label: "读取技能文件",
@@ -21,7 +19,8 @@ const readSkill = defineTool({
     name: Type.String({ description: "skill 名称" }),
   }),
 
-  execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
+  execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+    const SKILLS_DIR = join(ctx.cwd, ".pi", "skills");
     const skillName = params?.name;
     if (!skillName || typeof skillName !== "string") {
       return { content: [{ type: "text", text: "错误：请提供 skill 名称" }] };

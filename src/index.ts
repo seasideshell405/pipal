@@ -15,6 +15,7 @@ import { createStopCommand } from './commands/stop.js';
 import { createSudoCommand, createExitCommand } from './commands/sudo.js';
 import { createRollbackCommand } from './commands/rollback.js';
 import { createRecallCommand } from './commands/recall.js';
+import { createReloadCommand } from './commands/reload.js';
 import { PermanentMemory } from './memory/permanent.js';
 import { createArchive } from './memory/archival.js';
 import { SessionManager } from './pi-manager.js';
@@ -91,6 +92,7 @@ async function main(): Promise<void> {
   router.register(createExitCommand(sessionManager));
   router.register(createRollbackCommand(sessionManager));
   router.register(createRecallCommand(sessionManager));
+  router.register(createReloadCommand(sessionManager));
 
   // 定时任务系统
   const archive = createArchive(`${config.dataDir}/archives`);
