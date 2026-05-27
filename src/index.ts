@@ -85,7 +85,7 @@ async function main(): Promise<void> {
   router.register(createHelpCommand(router));
   router.register(createStatusCommand(stats, sessionManager));
   router.register(createMemoriesCommand(memory));
-  router.register(createPromptCommand(sessionManager));
+  router.register(createPromptCommand(sessionManager, config.dataDir));
   router.register(createStopCommand(sessionManager));
   router.register(createSudoCommand(sessionManager));
   router.register(createExitCommand(sessionManager));

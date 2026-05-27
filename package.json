@@ -5,8 +5,8 @@
   "type": "module",
   "description": "PiPal - 私人 AI 助理",
   "scripts": {
-    "build": "tsc && rm -rf dist/prompts && cp -r src/prompts dist/prompts",
-    "start": "node dist/index.js",
+    "build": "tsc --noEmit",
+    "start": "tsx src/index.ts",
     "dev": "tsc --watch",
     "test": "jest --passWithNoTests",
     "test:watch": "jest --watch"
@@ -15,6 +15,7 @@
     "@types/node": "^20.11.0",
     "@types/node-cron": "^3.0.11",
     "ts-node": "^10.9.2",
+    "tsx": "^4.22.3",
     "typescript": "^5.4.0"
   },
   "dependencies": {

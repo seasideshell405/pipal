@@ -1,4 +1,6 @@
 import { CommandHandler, CommandContext } from './index.js';
+import { writeFileSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 
 interface PromptSource {
   getSystemPrompt(): string;
@@ -6,7 +8,18 @@ interface PromptSource {
   getActiveToolNames(): string[];
 }
 
-export function createPromptCommand(source: PromptSource): CommandHandler {
+function formatTs(): string {
+  const d = new Date();
+  const Y = d.getFullYear();
+  const M = String(d.getMonth() + 1).padStart(2, '0');
+  const D = String(d.getDate()).padStart(2, '0');
+  const h = String(d.getHours()).padStart(2, '0');
+  const m = String(d.getMinutes()).padStart(2, '0');
+  const s = String(d.getSeconds()).padStart(2, '0');
+  return `${Y}-${M}-${D}_${h}${m}${s}`;
+}
+
+export function createPromptCommand(source: PromptSource, dataDir: string): CommandHandler {
   return {
     name: 'prompt',
     description: '查看 Pi 系统提示词',
@@ -25,7 +38,13 @@ export function createPromptCommand(source: PromptSource): CommandHandler {
         parts.push('', '**可用工具**', '', header, sep, ...rows);
       }
 
-      return parts.join('\n');
+      const outDir = join(dataDir, 'tmp', 'sysprompt');
+      mkdirSync(outDir, { recursive: true });
+      const filename = `${formatTs()}.md`;
+      const filepath = join(outDir, filename);
+      writeFileSync(filepath, parts.join('\n'), 'utf-8');
+
+      return `系统提示词已保存到 \`${filepath}\``;
     },
   };
 }
